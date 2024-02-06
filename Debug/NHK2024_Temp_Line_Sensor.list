@@ -1419,8 +1419,8 @@ void update_sensor_value(void) {
  8001054:	899b      	ldrh	r3, [r3, #12]
 	uint16_t temp_sensor_value[8] = {
  8001056:	837b      	strh	r3, [r7, #26]
-
 	// To do: print only if debug mode
+#ifdef DEBUG
 	// original value
 	printf(
 			"%d, %d, %d, %d, %d, %d, %d, %d\r\n",
@@ -1458,6 +1458,7 @@ void update_sensor_value(void) {
  800107e:	483f      	ldr	r0, [pc, #252]	; (800117c <update_sensor_value+0x168>)
  8001080:	f005 fe8e 	bl	8006da0 <iprintf>
 	);
+#endif
 
 	// normalize sensor value (0 to 1) and set
 	for (int i = 0; i < 8; i++ ) {
@@ -1523,6 +1524,7 @@ void update_sensor_value(void) {
 	}
 
 	// To do: print only if debug mode
+#ifdef DEBUG
 	printf(
  8001100:	4b1f      	ldr	r3, [pc, #124]	; (8001180 <update_sensor_value+0x16c>)
  8001102:	ed93 7b00 	vldr	d7, [r3]
@@ -1561,6 +1563,7 @@ void update_sensor_value(void) {
  800115c:	e9d3 2300 	ldrd	r2, r3, [r3]
  8001160:	4809      	ldr	r0, [pc, #36]	; (8001188 <update_sensor_value+0x174>)
  8001162:	f005 fe1d 	bl	8006da0 <iprintf>
+#endif
 }
  8001166:	bf00      	nop
  8001168:	3724      	adds	r7, #36	; 0x24

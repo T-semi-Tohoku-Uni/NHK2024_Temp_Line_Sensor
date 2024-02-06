@@ -51,7 +51,7 @@ uint16_t ADC2_buffer[7];
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define DEBUG // comment out if you want to hide debug print
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -136,6 +136,7 @@ void update_sensor_value(void) {
 	};
 
 	// To do: print only if debug mode
+#ifdef DEBUG
 	// original value
 	printf(
 			"%d, %d, %d, %d, %d, %d, %d, %d\r\n",
@@ -148,6 +149,7 @@ void update_sensor_value(void) {
 			temp_sensor_value[6],
 			temp_sensor_value[7]
 	);
+#endif
 
 	// normalize sensor value (0 to 1) and set
 	for (int i = 0; i < 8; i++ ) {
@@ -159,6 +161,7 @@ void update_sensor_value(void) {
 	}
 
 	// To do: print only if debug mode
+#ifdef DEBUG
 	printf(
 			"%f, %f, %f, %f, %f, %f, %f, %f\r\n",
 			line_sensor_value[0],
@@ -171,6 +174,7 @@ void update_sensor_value(void) {
 			line_sensor_value[7]
 		);
 	printf("%f\n", line_sensor_value[0]);
+#endif
 }
 
 int _write(int file, char *ptr, int len)
