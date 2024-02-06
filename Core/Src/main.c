@@ -18,15 +18,34 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "src/clip_number.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+struct LineSensor {
+	int max; // set max value of sensor (To do: initialize)
+	int min; // set min value of sensor (To do: initialize)
+};
+
+// Do not forget initialize !!!
+struct LineSensor *line_sensor_settings = NULL;
+/*
+ * Normalize sensor value range 0 to 1
+ */
+double line_sensor_value[8];
+
+/*
+ * Sensor => ADC buffer, warning not align this value, so you should use line_sensor_value
+ */
+uint16_t ADC1_buffer[1];
+uint16_t ADC2_buffer[7];
 
 /* USER CODE END PTD */
 
@@ -68,6 +87,92 @@ static void MX_ADC2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void Sensor_Settings_Init(void) {
+	line_sensor_settings = (struct LineSensor*)malloc(8 * sizeof(struct LineSensor));
+	// To do: implement initialize algorithm
+	for (int i = 0; i < 8; i++ ) {
+		line_sensor_settings[i].max = 3000;
+		line_sensor_settings[i].min = 200;
+	}
+}
+
+void ADC_Init(void) {
+	// ADC1 initialize and start
+	HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&ADC1_buffer, 1);
+
+	// ADC2 initialize and start
+	HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
+	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&ADC2_buffer, 7);
+}
+
+void update_sensor_value(void) {
+	if (line_sensor_settings == NULL) {
+		Error_Handler();
+	}
+	/*
+	* PIN assignment
+	* ADC1
+	* temp_sensor_value[0] -> ADC1_buffer[0] -> PB0 -> Sensor1
+	*
+	* ADC2
+	* temp_sensor_value[1] -> ADC2_buffer[0] -> PA0  -> Sensoe2
+	* temp_sensor_value[2] -> ADC2_buffer[1] -> PA1  -> Sensor3
+	* temp_sensor_value[3] -> ADC2_buffer[2] -> PA7  -> Sensor4
+	* temp_sensor_value[4] -> ADC2_buffer[3] -> PA6  -> Sensor5
+	* temp_sensor_value[5] -> ADC2_buffer[4] -> PF10 -> Sensor6
+	* temp_sensor_value[6] -> ADC2_buffer[5] -> PA5  -> Sensor7
+	* temp_sensor_value[7] -> ADC2_buffer[6] -> PA4  -> Sensor8
+	*/
+	uint16_t temp_sensor_value[8] = {
+			ADC1_buffer[0],
+			ADC2_buffer[0],
+			ADC2_buffer[1],
+			ADC2_buffer[2],
+			ADC2_buffer[3],
+			ADC2_buffer[4],
+			ADC2_buffer[5],
+			ADC2_buffer[6],
+	};
+
+	// To do: print only if debug mode
+	// original value
+	printf(
+			"%d, %d, %d, %d, %d, %d, %d, %d\r\n",
+			temp_sensor_value[0],
+			temp_sensor_value[1],
+			temp_sensor_value[2],
+			temp_sensor_value[3],
+			temp_sensor_value[4],
+			temp_sensor_value[5],
+			temp_sensor_value[6],
+			temp_sensor_value[7]
+	);
+
+	// normalize sensor value (0 to 1) and set
+	for (int i = 0; i < 8; i++ ) {
+		line_sensor_value[i] = clip_zero_one(
+				(double)temp_sensor_value[i],
+				(double)line_sensor_settings[i].min, // min value
+				(double)line_sensor_settings[i].max  // max value
+		);
+	}
+
+	// To do: print only if debug mode
+	printf(
+			"%f, %f, %f, %f, %f, %f, %f, %f\r\n",
+			line_sensor_value[0],
+			line_sensor_value[1],
+			line_sensor_value[2],
+			line_sensor_value[3],
+			line_sensor_value[4],
+			line_sensor_value[5],
+			line_sensor_value[6],
+			line_sensor_value[7]
+		);
+	printf("%f\n", line_sensor_value[0]);
+}
+
 int _write(int file, char *ptr, int len)
 {
 	HAL_UART_Transmit(&huart2, (uint8_t *)ptr, len, 10);
@@ -114,32 +219,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-//  int val;
-//  char sval[100];
-  uint16_t result1[8] = {0};
-  uint16_t result2[8] = {0};
-
-  HAL_ADCEx_Calibration_Start(&hadc2, ADC_SINGLE_ENDED);
-  HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&result2, 7);
-//  HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&result2, 7);
+  ADC_Init();
+  Sensor_Settings_Init();
   while (1)
   {
-//	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)&result1, 7);
-//	HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-
-//	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&result2, 8);
-//	HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
-
-//	printf("%d\r\n", result[0]);
-	printf("0 is %d\r\n", result2[4]);
-//	printf("1 is %d\r\n", result2[1]);
-//	printf("2 is %d\r\n", result2[2]);
-//	printf("3 is %d\r\n", result2[3]);
-//	printf("4 is %d\r\n", result2[4]);
-//	printf("5 is %d\r\n", result2[5]);
-//	printf("6 is %d\r\n", result2[6]);
-//	HAL_Delay(10000);
-//	printf("%d\r\n", result2[7]);
+	update_sensor_value();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -222,12 +306,12 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
   hadc1.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -247,7 +331,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_15;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -304,9 +388,9 @@ static void MX_ADC2_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_17;
+  sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -317,7 +401,7 @@ static void MX_ADC2_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Channel = ADC_CHANNEL_2;
   sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
@@ -326,8 +410,8 @@ static void MX_ADC2_Init(void)
 
   /** Configure Regular Channel
   */
+  sConfig.Channel = ADC_CHANNEL_4;
   sConfig.Rank = ADC_REGULAR_RANK_3;
-  sConfig.SamplingTime = ADC_SAMPLETIME_640CYCLES_5;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -335,6 +419,7 @@ static void MX_ADC2_Init(void)
 
   /** Configure Regular Channel
   */
+  sConfig.Channel = ADC_CHANNEL_3;
   sConfig.Rank = ADC_REGULAR_RANK_4;
   if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
