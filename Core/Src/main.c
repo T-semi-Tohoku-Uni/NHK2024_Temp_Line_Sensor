@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "src/clip_number.h"
+#include "src/filter.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,10 +37,9 @@ struct LineSensor {
 
 // Do not forget initialize !!!
 struct LineSensor *line_sensor_settings = NULL;
-/*
- * Normalize sensor value range 0 to 1
- */
-double line_sensor_value[8];
+
+// low pass filter settings
+struct NHK2024_Low_Pass_Filter_Settings *low_pass_filter_settings = NULL;
 
 /*
  * Sensor => ADC buffer, warning not align this value, so you should use line_sensor_value
@@ -90,12 +90,24 @@ static void MX_TIM6_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+/* Initialize Sensor Settings (Min and Max value of sensor) */
 void Sensor_Settings_Init(void) {
 	line_sensor_settings = (struct LineSensor*)malloc(8 * sizeof(struct LineSensor));
 	// To do: implement initialize algorithm
 	for (int i = 0; i < 8; i++ ) {
 		line_sensor_settings[i].max = 3000;
 		line_sensor_settings[i].min = 200;
+	}
+}
+
+// Initialize Low pass filter settings
+void Filter_Init(void) {
+	low_pass_filter_settings = (NHK2024_Low_Pass_Filter_Settings *)malloc(8 * sizeof(NHK2024_Low_Pass_Filter_Settings));
+	for (int i = 0; i < 8; i++ ) {
+		low_pass_filter_settings[i].control_cycle = 1e-6; // sampling time (1 / 1MHz)
+		low_pass_filter_settings[i].cutoff_freq = 1e-5;   // cutoff time (10% of sampling time (from ChatGPT))
+		low_pass_filter_settings[i].last_input_val = 0;
+		low_pass_filter_settings[i].last_output_val = 0;
 	}
 }
 
@@ -110,7 +122,16 @@ void ADC_Init(void) {
 }
 
 void update_sensor_value(void) {
+	// variable definition
+	// Normalize sensor value range 0 to 1
+	double line_sensor_value[8];
+
+	if (low_pass_filter_settings == NULL) {
+		printf("Error: Initialize Low Pass Filter");
+		Error_Handler();
+	}
 	if (line_sensor_settings == NULL) {
+		printf("Error: Initialize Line Sensor Settings");
 		Error_Handler();
 	}
 	/*
@@ -139,45 +160,54 @@ void update_sensor_value(void) {
 	};
 
 	// To do: print only if debug mode
-#ifdef DEBUG
-	// original value
-	printf(
-			"%d, %d, %d, %d, %d, %d, %d, %d\r\n",
-			temp_sensor_value[0],
-			temp_sensor_value[1],
-			temp_sensor_value[2],
-			temp_sensor_value[3],
-			temp_sensor_value[4],
-			temp_sensor_value[5],
-			temp_sensor_value[6],
-			temp_sensor_value[7]
-	);
-#endif
+//#ifdef DEBUG
+//	// original value
+//	printf(
+//			"%d, %d, %d, %d, %d, %d, %d, %d\r\n",
+//			temp_sensor_value[0],
+//			temp_sensor_value[1],
+//			temp_sensor_value[2],
+//			temp_sensor_value[3],
+//			temp_sensor_value[4],
+//			temp_sensor_value[5],
+//			temp_sensor_value[6],
+//			temp_sensor_value[7]
+//	);
+//#endif
 
 	// normalize sensor value (0 to 1) and set
 	for (int i = 0; i < 8; i++ ) {
+		// normalize 0 to 1
 		line_sensor_value[i] = clip_zero_one(
 				(double)temp_sensor_value[i],
 				(double)line_sensor_settings[i].min, // min value
 				(double)line_sensor_settings[i].max  // max value
+		);
+
+		// apply low pass filter
+		line_sensor_value[i] = low_pass_filter_update(
+				&low_pass_filter_settings[i],
+				line_sensor_value[i]
 		);
 	}
 
 	// To do: print only if debug mode
 #ifdef DEBUG
 	printf(
-			"%.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\r\n",
+			"%f,%f,%f,%f,%f,%f,%f,%f\r\n",
 			line_sensor_value[0],
 			line_sensor_value[1],
 			line_sensor_value[2],
 			line_sensor_value[3],
 			line_sensor_value[4],
-			line_sensor_value[5],
+			line_sensor_value[5], // this value may be a little small output (1.0 (max) <=> 0.5(min))
 			line_sensor_value[6],
 			line_sensor_value[7]
 		);
 	printf("%f\n", line_sensor_value[0]);
 #endif
+
+	//Calculate lateral deviation from sensor values
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
@@ -236,6 +266,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   ADC_Init();
   Sensor_Settings_Init();
+  Filter_Init();
   HAL_TIM_Base_Start_IT(&htim6); // Start Timer
   while (1)
   {
