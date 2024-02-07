@@ -1554,11 +1554,16 @@ void ADC_Init(void) {
  80011bc:	200001fc 	.word	0x200001fc
 
 080011c0 <update_sensor_value>:
+/*
+ * Sensor Value 0 =>
+ * Sensor Value 1 =>
+ */
 
 void update_sensor_value(void) {
  80011c0:	e92d 4fb0 	stmdb	sp!, {r4, r5, r7, r8, r9, sl, fp, lr}
  80011c4:	b0a6      	sub	sp, #152	; 0x98
  80011c6:	af0e      	add	r7, sp, #56	; 0x38
+
 	// variable definition
 	// Normalize sensor value range 0 to 1
 	double line_sensor_value[8];
@@ -1629,11 +1634,11 @@ void update_sensor_value(void) {
  8001218:	899b      	ldrh	r3, [r3, #12]
 	uint16_t temp_sensor_value[8] = {
  800121a:	82fb      	strh	r3, [r7, #22]
+//			temp_sensor_value[6],
 //			temp_sensor_value[7]
 //	);
 //#endif
 
-	// normalize sensor value (0 to 1) and set
 	for (int i = 0; i < 8; i++ ) {
  800121c:	2300      	movs	r3, #0
  800121e:	65fb      	str	r3, [r7, #92]	; 0x5c
@@ -1727,10 +1732,10 @@ void update_sensor_value(void) {
  80012dc:	6dfb      	ldr	r3, [r7, #92]	; 0x5c
  80012de:	2b07      	cmp	r3, #7
  80012e0:	dd9f      	ble.n	8001222 <update_sensor_value+0x62>
+				line_sensor_value[i]
 		);
 	}
 
-	// To do: print only if debug mode
 #ifdef DEBUG
 	printf(
  80012e2:	ed97 7b06 	vldr	d7, [r7, #24]
@@ -1753,7 +1758,7 @@ void update_sensor_value(void) {
  8001326:	480c      	ldr	r0, [pc, #48]	; (8001358 <update_sensor_value+0x198>)
  8001328:	f006 fa40 	bl	80077ac <iprintf>
 			line_sensor_value[4],
-			line_sensor_value[5],
+			line_sensor_value[5], // this value may be a little small output (1.0 (max) <=> 0.5(min))
 			line_sensor_value[6],
 			line_sensor_value[7]
 		);
@@ -1764,6 +1769,7 @@ void update_sensor_value(void) {
 #endif
 
 	//Calculate lateral deviation from sensor values
+	//double deviation =
 }
  8001336:	bf00      	nop
  8001338:	3760      	adds	r7, #96	; 0x60

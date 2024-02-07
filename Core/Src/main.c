@@ -121,7 +121,13 @@ void ADC_Init(void) {
 	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)&ADC2_buffer, 7);
 }
 
+/*
+ * Sensor Value 0 => White Line
+ * Sensor Value 1 => Black Line
+ */
+
 void update_sensor_value(void) {
+
 	// variable definition
 	// Normalize sensor value range 0 to 1
 	double line_sensor_value[8];
@@ -159,7 +165,6 @@ void update_sensor_value(void) {
 			ADC2_buffer[6],
 	};
 
-	// To do: print only if debug mode
 //#ifdef DEBUG
 //	// original value
 //	printf(
@@ -175,7 +180,6 @@ void update_sensor_value(void) {
 //	);
 //#endif
 
-	// normalize sensor value (0 to 1) and set
 	for (int i = 0; i < 8; i++ ) {
 		// normalize 0 to 1
 		line_sensor_value[i] = clip_zero_one(
@@ -191,7 +195,6 @@ void update_sensor_value(void) {
 		);
 	}
 
-	// To do: print only if debug mode
 #ifdef DEBUG
 	printf(
 			"%f,%f,%f,%f,%f,%f,%f,%f\r\n",
@@ -208,6 +211,12 @@ void update_sensor_value(void) {
 #endif
 
 	//Calculate lateral deviation from sensor values
+	double deviation =
+			(line_sensor_value[0] + 0.75 * line_sensor_value[1] + 0.5 * line_sensor_value[2] + 0.25 * line_sensor_value[3]) -
+			(line_sensor_value[7] + 0.75 * line_sensor_value[6] + 0.5 * line_sensor_value[5] + 0.25 * line_sensor_value[4]);
+
+	// Send ON CAN
+
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
